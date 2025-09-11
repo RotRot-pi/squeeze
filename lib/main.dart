@@ -18,6 +18,8 @@ enum ResizeMode { longEdge, fit, fill, pad }
 
 enum OutputFormat { auto, jpeg, png }
 
+enum ResampleQuality { fast, quality, pixel }
+
 String formatCountSummary(int done, int total, int errors) {
   final parts = <String>[];
   parts.add('$done/$total done');
@@ -50,6 +52,12 @@ class Options {
   final int targetHeight;
   final bool noUpscale;
   final OutputFormat preferredOutputFormat;
+  final ResampleQuality resampleQuality;
+  final bool enableJpegOptim;
+  final bool enablePngquant;
+  final bool enableOxipng;
+  final int pngquantQualityMin;
+  final int pngquantQualityMax;
 
   const Options({
     required this.maxLongEdge,
@@ -64,6 +72,12 @@ class Options {
     required this.targetHeight,
     required this.noUpscale,
     required this.preferredOutputFormat,
+    required this.resampleQuality,
+    required this.enableJpegOptim,
+    required this.enablePngquant,
+    required this.enableOxipng,
+    required this.pngquantQualityMin,
+    required this.pngquantQualityMax,
   });
 
   Options copyWith({
@@ -79,6 +93,12 @@ class Options {
     int? targetHeight,
     bool? noUpscale,
     OutputFormat? preferredOutputFormat,
+    ResampleQuality? resampleQuality,
+    bool? enableJpegOptim,
+    bool? enablePngquant,
+    bool? enableOxipng,
+    int? pngquantQualityMin,
+    int? pngquantQualityMax,
   }) {
     return Options(
       maxLongEdge: maxLongEdge ?? this.maxLongEdge,
@@ -94,6 +114,12 @@ class Options {
       noUpscale: noUpscale ?? this.noUpscale,
       preferredOutputFormat:
           preferredOutputFormat ?? this.preferredOutputFormat,
+      resampleQuality: resampleQuality ?? this.resampleQuality,
+      enableJpegOptim: enableJpegOptim ?? this.enableJpegOptim,
+      enablePngquant: enablePngquant ?? this.enablePngquant,
+      enableOxipng: enableOxipng ?? this.enableOxipng,
+      pngquantQualityMin: pngquantQualityMin ?? this.pngquantQualityMin,
+      pngquantQualityMax: pngquantQualityMax ?? this.pngquantQualityMax,
     );
   }
 
@@ -110,6 +136,12 @@ class Options {
     'targetHeight': targetHeight,
     'noUpscale': noUpscale,
     'preferredOutputFormat': preferredOutputFormat.index,
+    'resampleQuality': resampleQuality.index,
+    'enableJpegOptim': enableJpegOptim,
+    'enablePngquant': enablePngquant,
+    'enableOxipng': enableOxipng,
+    'pngquantQualityMin': pngquantQualityMin,
+    'pngquantQualityMax': pngquantQualityMax,
   };
 
   static Options fromMap(Map<String, dynamic> m) => Options(
@@ -126,6 +158,12 @@ class Options {
     noUpscale: m['noUpscale'] as bool,
     preferredOutputFormat:
         OutputFormat.values[m['preferredOutputFormat'] as int],
+    resampleQuality: ResampleQuality.values[m['resampleQuality'] as int],
+    enableJpegOptim: m['enableJpegOptim'] as bool,
+    enablePngquant: m['enablePngquant'] as bool,
+    enableOxipng: m['enableOxipng'] as bool,
+    pngquantQualityMin: m['pngquantQualityMin'] as int,
+    pngquantQualityMax: m['pngquantQualityMax'] as int,
   );
 
   static const defaultOptions = Options(
@@ -141,6 +179,12 @@ class Options {
     targetHeight: 1024,
     noUpscale: true,
     preferredOutputFormat: OutputFormat.auto,
+    resampleQuality: ResampleQuality.fast,
+    enableJpegOptim: false,
+    enablePngquant: false,
+    enableOxipng: false,
+    pngquantQualityMin: 65,
+    pngquantQualityMax: 85,
   );
 }
 
@@ -200,12 +244,24 @@ bool _hasTransparencySampled(img.Image image, {int step = 16}) {
   final w = image.width, h = image.height;
   for (int y = 0; y < h; y += step) {
     for (int x = 0; x < w; x += step) {
-      final c = image.getPixel(x, y).a;
-      if (c < 255) return true;
+      final a = image.getPixel(x, y).a;
+      if (a < 255) return true;
     }
   }
   final c = image.getPixel(w - 1, h - 1);
   return c.a < 255;
+}
+
+img.Interpolation _interpFor(ResampleQuality q) {
+  switch (q) {
+    case ResampleQuality.quality:
+      return img.Interpolation.cubic;
+    case ResampleQuality.pixel:
+      return img.Interpolation.nearest;
+    case ResampleQuality.fast:
+    default:
+      return img.Interpolation.average;
+  }
 }
 
 Map<String, dynamic> _processImageWorker(Map<String, dynamic> args) {
@@ -248,6 +304,7 @@ Map<String, dynamic> _processImageWorker(Map<String, dynamic> args) {
       };
     }
 
+    final interp = _interpFor(options.resampleQuality);
     img.Image image = img.bakeOrientation(decoded);
 
     final ext = p.extension(inputPath).toLowerCase();
@@ -259,12 +316,7 @@ Map<String, dynamic> _processImageWorker(Map<String, dynamic> args) {
       if (useScale == 1.0) return src;
       final w = (sw * useScale).round();
       final h = (sh * useScale).round();
-      return img.copyResize(
-        src,
-        width: w,
-        height: h,
-        interpolation: img.Interpolation.average,
-      );
+      return img.copyResize(src, width: w, height: h, interpolation: interp);
     }
 
     img.Image processFill(img.Image src, int tw, int th, bool noUpscale) {
@@ -280,7 +332,7 @@ Map<String, dynamic> _processImageWorker(Map<String, dynamic> args) {
         src,
         width: w,
         height: h,
-        interpolation: img.Interpolation.average,
+        interpolation: interp,
       );
       final x = ((w - tw) / 2).round();
       final y = ((h - th) / 2).round();
@@ -301,14 +353,8 @@ Map<String, dynamic> _processImageWorker(Map<String, dynamic> args) {
       final h = (sh * useScale).round();
       final resized = (useScale == 1.0)
           ? src
-          : img.copyResize(
-              src,
-              width: w,
-              height: h,
-              interpolation: img.Interpolation.average,
-            );
+          : img.copyResize(src, width: w, height: h, interpolation: interp);
 
-      // Create canvas with background color
       final bgColor = transparentBg
           ? img.ColorRgba8(0, 0, 0, 0)
           : img.ColorRgba8(255, 255, 255, 255);
@@ -320,19 +366,15 @@ Map<String, dynamic> _processImageWorker(Map<String, dynamic> args) {
         backgroundColor: bgColor,
       );
 
-      // No need to fill since we set backgroundColor above
-      // If you still need to fill, use: img.fill(canvas, color: bgColor);
-
       final dx = ((tw - resized.width) / 2).round();
       final dy = ((th - resized.height) / 2).round();
 
-      // Use compositeImage instead of copyInto
       img.compositeImage(
         canvas,
         resized,
         dstX: dx,
         dstY: dy,
-        blend: img.BlendMode.direct, // or BlendMode.alpha if you need blending
+        blend: img.BlendMode.direct,
       );
 
       return canvas;
@@ -350,7 +392,7 @@ Map<String, dynamic> _processImageWorker(Map<String, dynamic> args) {
             image,
             width: (w * useScale).round(),
             height: (h * useScale).round(),
-            interpolation: img.Interpolation.average,
+            interpolation: interp,
           );
         }
       }
@@ -385,11 +427,7 @@ Map<String, dynamic> _processImageWorker(Map<String, dynamic> args) {
         } else {
           outFmt = OutputFormat.png;
         }
-      }
-      // else if (ext == '.webp') {
-      // outFmt = OutputFormat.webp;
-      // }
-      else {
+      } else {
         outFmt = OutputFormat.jpeg;
       }
     }
@@ -403,7 +441,6 @@ Map<String, dynamic> _processImageWorker(Map<String, dynamic> args) {
 
     String outExt = '.jpg';
     if (outFmt == OutputFormat.png) outExt = '.png';
-    // if (outFmt == OutputFormat.webp) outExt = '.webp';
 
     String suffix = options.filenameSuffix;
     if (options.resizeMode == ResizeMode.fill ||
@@ -429,16 +466,68 @@ Map<String, dynamic> _processImageWorker(Map<String, dynamic> args) {
     } else if (outFmt == OutputFormat.png) {
       outBytes = img.encodePng(image, level: 6);
     } else {
-      // Default to JPEG for unsupported formats
       outBytes = img.encodeJpg(
         image,
         quality: options.jpegQuality.clamp(1, 100),
       );
-
-      //! NOTE: Webp SUPPORT IS NOT AVAILABLE IN THE PACKAGE AS IN VERSION: ^4.5.4
-      print('WebP not supported, using JPEG format');
     }
     File(outputPath).writeAsBytesSync(outBytes);
+
+    if (outFmt == OutputFormat.jpeg && options.enableJpegOptim) {
+      try {
+        Process.runSync('jpegoptim', [
+          '--strip-all',
+          '--all-progressive',
+          '--max=${options.jpegQuality}',
+          outputPath,
+        ]);
+      } catch (_) {}
+    }
+    if (outFmt == OutputFormat.png) {
+      if (options.enablePngquant) {
+        try {
+          final tmp = '$outputPath.qtmp.png';
+          final r = Process.runSync('pngquant', [
+            '--force',
+            '--skip-if-larger',
+            '--quality=${options.pngquantQualityMin}-${options.pngquantQualityMax}',
+            '--output',
+            tmp,
+            outputPath,
+          ]);
+          if (r.exitCode == 0 && File(tmp).existsSync()) {
+            final tmpFile = File(tmp);
+            final orig = File(outputPath);
+            if (tmpFile.lengthSync() < orig.lengthSync()) {
+              try {
+                orig.deleteSync();
+              } catch (_) {}
+              tmpFile.renameSync(outputPath);
+            } else {
+              try {
+                tmpFile.deleteSync();
+              } catch (_) {}
+            }
+          } else {
+            try {
+              File(tmp).deleteSync();
+            } catch (_) {}
+          }
+        } catch (_) {}
+      }
+      if (options.enableOxipng) {
+        try {
+          Process.runSync('oxipng', [
+            '-o',
+            '4',
+            '--strip',
+            'all',
+            '--preserve',
+            outputPath,
+          ]);
+        } catch (_) {}
+      }
+    }
 
     return {
       'success': true,
@@ -558,9 +647,52 @@ class _AppShellState extends State<AppShell> {
   Timer? _bannerTimer;
   CancelToken? _token;
 
+  bool hasJpegoptim = false;
+  bool hasPngquant = false;
+  bool hasOxipng = false;
+
   int get totalCount => jobs.length;
   int get doneCount => jobs.where((j) => j.status == JobStatus.done).length;
   int get errorCount => jobs.where((j) => j.status == JobStatus.error).length;
+
+  @override
+  void initState() {
+    super.initState();
+    _detectExternalTools();
+  }
+
+  Future<bool> _cmdOnPath(String cmd) async {
+    try {
+      final res = await Process.run(Platform.isWindows ? 'where' : 'which', [
+        cmd,
+      ]);
+      return res.exitCode == 0 &&
+          res.stdout.toString().toString().trim().isNotEmpty;
+    } catch (_) {
+      return false;
+    }
+  }
+
+  Future<void> _detectExternalTools() async {
+    final j = await _cmdOnPath('jpegoptim');
+    final pz = await _cmdOnPath('pngquant');
+    final ox = await _cmdOnPath('oxipng');
+    if (!mounted) return;
+    setState(() {
+      hasJpegoptim = j;
+      hasPngquant = pz;
+      hasOxipng = ox;
+      if (!j && options.enableJpegOptim) {
+        options = options.copyWith(enableJpegOptim: false);
+      }
+      if (!pz && options.enablePngquant) {
+        options = options.copyWith(enablePngquant: false);
+      }
+      if (!ox && options.enableOxipng) {
+        options = options.copyWith(enableOxipng: false);
+      }
+    });
+  }
 
   @override
   void dispose() {
@@ -611,10 +743,7 @@ class _AppShellState extends State<AppShell> {
           .map((e) => e.replaceFirst('.', ''))
           .toList(),
     );
-    final selected = await openFiles(
-      acceptedTypeGroups: [typeGroup],
-      // multiple: true,
-    );
+    final selected = await openFiles(acceptedTypeGroups: [typeGroup]);
     await addDroppedItems(selected.map((x) => x.path).toList());
   }
 
@@ -759,6 +888,9 @@ class _AppShellState extends State<AppShell> {
                 doneCount: doneCount,
                 totalCount: totalCount,
                 errorCount: errorCount,
+                hasJpegoptim: hasJpegoptim,
+                hasPngquant: hasPngquant,
+                hasOxipng: hasOxipng,
               ),
             ),
           ],
@@ -910,6 +1042,9 @@ class _SettingsPane extends StatefulWidget {
   final int doneCount;
   final int totalCount;
   final int errorCount;
+  final bool hasJpegoptim;
+  final bool hasPngquant;
+  final bool hasOxipng;
 
   const _SettingsPane({
     required this.options,
@@ -926,6 +1061,9 @@ class _SettingsPane extends StatefulWidget {
     required this.doneCount,
     required this.totalCount,
     required this.errorCount,
+    required this.hasJpegoptim,
+    required this.hasPngquant,
+    required this.hasOxipng,
   });
 
   @override
@@ -970,350 +1108,509 @@ class _SettingsPaneState extends State<_SettingsPane> {
 
     return Card(
       backgroundColor: theme.micaBackgroundColor,
-      child: Padding(
-        padding: const EdgeInsets.all(12),
-        child: Column(
-          children: [
-            if (widget.bannerMessage != null)
-              Padding(
-                padding: const EdgeInsets.only(bottom: 8),
-                child: InfoBar(
-                  title: Text(widget.bannerMessage!),
-                  severity: widget.bannerSeverity,
-                  isLong: true,
-                  action: IconButton(
-                    icon: const Icon(FluentIcons.clear),
-                    onPressed: widget.onCloseBanner,
-                  ),
-                ),
-              ),
-            Row(
+      child: Stack(
+        children: [
+          Padding(
+            padding: const EdgeInsets.all(12),
+            child: Column(
               children: [
-                const Icon(FluentIcons.image_pixel, size: 18),
-                const SizedBox(width: 8),
-                Text('Settings', style: theme.typography.subtitle),
-                const Spacer(),
-                if (progress != null && progress < 1.0)
-                  SizedBox(height: 16, child: ProgressBar(value: progress)),
-              ],
-            ),
-            const SizedBox(height: 8),
-            const Divider(),
-            const SizedBox(height: 8),
-            Expanded(
-              child: Scrollbar(
-                controller: _scrollCtl,
-                child: SingleChildScrollView(
-                  controller: _scrollCtl,
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      InfoLabel(
-                        label: 'Resize mode',
-                        child: ComboBox<ResizeMode>(
-                          value: o.resizeMode,
-                          isExpanded: true,
-                          onChanged: widget.isProcessing
-                              ? null
-                              : (v) => widget.onOptionsChanged(
-                                  o.copyWith(resizeMode: v),
-                                ),
-                          items: ResizeMode.values.map((m) {
-                            final text = {
-                              ResizeMode.longEdge: 'Constrain long edge',
-                              ResizeMode.fit: 'Fit within WxH',
-                              ResizeMode.fill: 'Fill to WxH (crop)',
-                              ResizeMode.pad: 'Pad to WxH',
-                            }[m]!;
-                            return ComboBoxItem(value: m, child: Text(text));
-                          }).toList(),
-                        ),
-                      ),
-                      const SizedBox(height: 10),
-                      if (o.resizeMode == ResizeMode.longEdge)
-                        InfoLabel(
-                          label: 'Max long edge: ${o.maxLongEdge}px',
-                          child: Slider(
-                            value: o.maxLongEdge.toDouble(),
-                            min: 400,
-                            max: 6000,
-                            divisions: (6000 - 400) ~/ 100,
-                            onChanged: widget.isProcessing
-                                ? null
-                                : (v) => widget.onOptionsChanged(
-                                    o.copyWith(maxLongEdge: v.round()),
-                                  ),
+                Row(
+                  children: [
+                    const Icon(FluentIcons.image_pixel, size: 18),
+                    const SizedBox(width: 8),
+                    Text('Settings', style: theme.typography.subtitle),
+                    const Spacer(),
+                    if (progress != null && progress < 1.0)
+                      SizedBox(height: 16, child: ProgressBar(value: progress)),
+                  ],
+                ),
+                const SizedBox(height: 8),
+                const Divider(),
+                const SizedBox(height: 8),
+                Expanded(
+                  child: Scrollbar(
+                    controller: _scrollCtl,
+                    child: SingleChildScrollView(
+                      controller: _scrollCtl,
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          InfoLabel(
+                            label: 'Resize mode',
+                            child: ComboBox<ResizeMode>(
+                              value: o.resizeMode,
+                              isExpanded: true,
+                              onChanged: widget.isProcessing
+                                  ? null
+                                  : (v) => widget.onOptionsChanged(
+                                      o.copyWith(resizeMode: v),
+                                    ),
+                              items: ResizeMode.values.map((m) {
+                                final text = {
+                                  ResizeMode.longEdge: 'Constrain long edge',
+                                  ResizeMode.fit: 'Fit within WxH',
+                                  ResizeMode.fill: 'Fill to WxH (crop)',
+                                  ResizeMode.pad: 'Pad to WxH',
+                                }[m]!;
+                                return ComboBoxItem(
+                                  value: m,
+                                  child: Text(text),
+                                );
+                              }).toList(),
+                            ),
                           ),
-                        )
-                      else
-                        Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Row(
-                              children: [
-                                Expanded(
-                                  child: InfoLabel(
-                                    label: 'Width',
-                                    child: NumberBox(
-                                      value: o.targetWidth,
-                                      mode: SpinButtonPlacementMode.inline,
-                                      min: 1,
-                                      max: 10000,
-                                      onChanged: widget.isProcessing
-                                          ? null
-                                          : (int? v) => widget.onOptionsChanged(
-                                              o.copyWith(
-                                                targetWidth: v ?? o.targetWidth,
-                                              ),
-                                            ),
+                          const SizedBox(height: 10),
+                          InfoLabel(
+                            label: 'Resampling',
+                            child: ComboBox<ResampleQuality>(
+                              value: o.resampleQuality,
+                              isExpanded: true,
+                              onChanged: widget.isProcessing
+                                  ? null
+                                  : (v) => widget.onOptionsChanged(
+                                      o.copyWith(resampleQuality: v),
                                     ),
-                                  ),
+                              items: const [
+                                ComboBoxItem(
+                                  value: ResampleQuality.fast,
+                                  child: Text('Fast'),
                                 ),
-                                const SizedBox(width: 8),
-                                Expanded(
-                                  child: InfoLabel(
-                                    label: 'Height',
-                                    child: NumberBox(
-                                      value: o.targetHeight,
-                                      mode: SpinButtonPlacementMode.inline,
-                                      min: 1,
-                                      max: 10000,
-                                      onChanged: widget.isProcessing
-                                          ? null
-                                          : (int? v) => widget.onOptionsChanged(
-                                              o.copyWith(
-                                                targetHeight:
-                                                    v ?? o.targetHeight,
-                                              ),
-                                            ),
+                                ComboBoxItem(
+                                  value: ResampleQuality.quality,
+                                  child: Text('Quality'),
+                                ),
+                                ComboBoxItem(
+                                  value: ResampleQuality.pixel,
+                                  child: Text('Pixel art (nearest)'),
+                                ),
+                              ],
+                            ),
+                          ),
+                          const SizedBox(height: 10),
+                          if (o.resizeMode == ResizeMode.longEdge)
+                            InfoLabel(
+                              label: 'Max long edge: ${o.maxLongEdge}px',
+                              child: Slider(
+                                value: o.maxLongEdge.toDouble(),
+                                min: 400,
+                                max: 6000,
+                                divisions: (6000 - 400) ~/ 100,
+                                onChanged: widget.isProcessing
+                                    ? null
+                                    : (v) => widget.onOptionsChanged(
+                                        o.copyWith(maxLongEdge: v.round()),
+                                      ),
+                              ),
+                            )
+                          else
+                            Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Row(
+                                  children: [
+                                    Expanded(
+                                      child: InfoLabel(
+                                        label: 'Width',
+                                        child: NumberBox(
+                                          value: o.targetWidth,
+                                          mode: SpinButtonPlacementMode.inline,
+                                          min: 1,
+                                          max: 10000,
+                                          onChanged: widget.isProcessing
+                                              ? null
+                                              : (int? v) =>
+                                                    widget.onOptionsChanged(
+                                                      o.copyWith(
+                                                        targetWidth:
+                                                            v ?? o.targetWidth,
+                                                      ),
+                                                    ),
+                                        ),
+                                      ),
                                     ),
+                                    const SizedBox(width: 8),
+                                    Expanded(
+                                      child: InfoLabel(
+                                        label: 'Height',
+                                        child: NumberBox(
+                                          value: o.targetHeight,
+                                          mode: SpinButtonPlacementMode.inline,
+                                          min: 1,
+                                          max: 10000,
+                                          onChanged: widget.isProcessing
+                                              ? null
+                                              : (int? v) =>
+                                                    widget.onOptionsChanged(
+                                                      o.copyWith(
+                                                        targetHeight:
+                                                            v ?? o.targetHeight,
+                                                      ),
+                                                    ),
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                                const SizedBox(height: 6),
+                                ToggleSwitch(
+                                  checked: o.noUpscale,
+                                  onChanged: widget.isProcessing
+                                      ? null
+                                      : (v) => widget.onOptionsChanged(
+                                          o.copyWith(noUpscale: v),
+                                        ),
+                                  content: const Text(
+                                    'No upscaling',
+                                    maxLines: 2,
+                                    overflow: TextOverflow.ellipsis,
                                   ),
                                 ),
                               ],
                             ),
-                            const SizedBox(height: 6),
-                            ToggleSwitch(
-                              checked: o.noUpscale,
+                          const SizedBox(height: 10),
+                          InfoLabel(
+                            label: 'Output format',
+                            child: ComboBox<OutputFormat>(
+                              value: o.preferredOutputFormat,
+                              isExpanded: true,
                               onChanged: widget.isProcessing
                                   ? null
                                   : (v) => widget.onOptionsChanged(
-                                      o.copyWith(noUpscale: v),
+                                      o.copyWith(preferredOutputFormat: v),
                                     ),
-                              content: const Text(
-                                'No upscaling',
-                                maxLines: 2,
-                                overflow: TextOverflow.ellipsis,
-                              ),
-                            ),
-                          ],
-                        ),
-                      const SizedBox(height: 10),
-                      InfoLabel(
-                        label: 'Output format',
-                        child: ComboBox<OutputFormat>(
-                          value: o.preferredOutputFormat,
-                          isExpanded: true,
-                          onChanged: widget.isProcessing
-                              ? null
-                              : (v) => widget.onOptionsChanged(
-                                  o.copyWith(preferredOutputFormat: v),
+                              items: const [
+                                ComboBoxItem(
+                                  value: OutputFormat.auto,
+                                  child: Text('Auto'),
                                 ),
-                          items: [
-                            const ComboBoxItem(
-                              value: OutputFormat.auto,
-                              child: Text('Auto'),
-                            ),
-                            const ComboBoxItem(
-                              value: OutputFormat.jpeg,
-                              child: Text('JPEG'),
-                            ),
-                            const ComboBoxItem(
-                              value: OutputFormat.png,
-                              child: Text('PNG'),
-                            ),
-                            // const ComboBoxItem(
-                            //   value: OutputFormat.webp,
-                            //   child: Text('WebP'),
-                            // ),
-                          ],
-                        ),
-                      ),
-                      const SizedBox(height: 8),
-                      ToggleSwitch(
-                        checked: o.convertPngToJpeg,
-                        onChanged: widget.isProcessing
-                            ? null
-                            : (v) => widget.onOptionsChanged(
-                                o.copyWith(convertPngToJpeg: v),
-                              ),
-                        content: const Text(
-                          'Convert PNG to JPEG when safe',
-                          maxLines: 2,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                      ),
-                      const SizedBox(height: 8),
-                      InfoLabel(
-                        label: 'JPEG quality: ${o.jpegQuality}',
-                        child: Slider(
-                          value: o.jpegQuality.toDouble(),
-                          min: 30,
-                          max: 95,
-                          divisions: 65,
-                          onChanged: widget.isProcessing
-                              ? null
-                              : (v) => widget.onOptionsChanged(
-                                  o.copyWith(jpegQuality: v.round()),
+                                ComboBoxItem(
+                                  value: OutputFormat.jpeg,
+                                  child: Text('JPEG'),
                                 ),
-                        ),
-                      ),
-                      const SizedBox(height: 8),
-                      ToggleSwitch(
-                        checked: o.stripMetadata,
-                        onChanged: widget.isProcessing
-                            ? null
-                            : (v) => widget.onOptionsChanged(
-                                o.copyWith(stripMetadata: v),
-                              ),
-                        content: const Text('Strip metadata'),
-                      ),
-                      const SizedBox(height: 8),
-                      InfoLabel(
-                        label: 'Min input size (KB)',
-                        child: NumberBox(
-                          value: o.minInputKB,
-                          mode: SpinButtonPlacementMode.inline,
-                          min: 0,
-                          max: 100000,
-                          onChanged: widget.isProcessing
-                              ? null
-                              : (int? v) => widget.onOptionsChanged(
-                                  o.copyWith(minInputKB: v ?? o.minInputKB),
+                                ComboBoxItem(
+                                  value: OutputFormat.png,
+                                  child: Text('PNG'),
                                 ),
-                        ),
-                      ),
-                      const SizedBox(height: 8),
-                      InfoLabel(
-                        label: 'Filename suffix',
-                        child: TextBox(
-                          controller: _suffixCtl,
-                          placeholder: '-compressed',
-                          enabled: !widget.isProcessing,
-                          onChanged: (t) => widget.onOptionsChanged(
-                            o.copyWith(filenameSuffix: t),
+                              ],
+                            ),
                           ),
-                        ),
-                      ),
-                      const SizedBox(height: 8),
-                      const Text('Output folder'),
-                      const SizedBox(height: 6),
-                      Row(
-                        children: [
-                          Expanded(
-                            child: Text(
-                              o.outputDir ??
-                                  'Compressed (next to each original)',
+                          const SizedBox(height: 8),
+                          ToggleSwitch(
+                            checked: o.convertPngToJpeg,
+                            onChanged: widget.isProcessing
+                                ? null
+                                : (v) => widget.onOptionsChanged(
+                                    o.copyWith(convertPngToJpeg: v),
+                                  ),
+                            content: const Text(
+                              'Convert PNG to JPEG when safe',
                               maxLines: 2,
                               overflow: TextOverflow.ellipsis,
-                              style: theme.typography.caption,
                             ),
                           ),
-                          const SizedBox(width: 8),
-                          Button(
-                            onPressed: widget.isProcessing
+                          const SizedBox(height: 8),
+                          InfoLabel(
+                            label: 'JPEG quality: ${o.jpegQuality}',
+                            child: Slider(
+                              value: o.jpegQuality.toDouble(),
+                              min: 30,
+                              max: 95,
+                              divisions: 65,
+                              onChanged: widget.isProcessing
+                                  ? null
+                                  : (v) => widget.onOptionsChanged(
+                                      o.copyWith(jpegQuality: v.round()),
+                                    ),
+                            ),
+                          ),
+                          const SizedBox(height: 8),
+                          ToggleSwitch(
+                            checked: o.stripMetadata,
+                            onChanged: widget.isProcessing
                                 ? null
-                                : widget.onPickOutput,
-                            child: const Text('Choose...'),
+                                : (v) => widget.onOptionsChanged(
+                                    o.copyWith(stripMetadata: v),
+                                  ),
+                            content: const Text('Strip metadata'),
+                          ),
+                          const SizedBox(height: 8),
+                          InfoLabel(
+                            label: 'Min input size (KB)',
+                            child: NumberBox(
+                              value: o.minInputKB,
+                              mode: SpinButtonPlacementMode.inline,
+                              min: 0,
+                              max: 100000,
+                              onChanged: widget.isProcessing
+                                  ? null
+                                  : (int? v) => widget.onOptionsChanged(
+                                      o.copyWith(minInputKB: v ?? o.minInputKB),
+                                    ),
+                            ),
+                          ),
+                          const SizedBox(height: 8),
+                          InfoLabel(
+                            label: 'Filename suffix',
+                            child: TextBox(
+                              controller: _suffixCtl,
+                              placeholder: '-compressed',
+                              enabled: !widget.isProcessing,
+                              onChanged: (t) => widget.onOptionsChanged(
+                                o.copyWith(filenameSuffix: t),
+                              ),
+                            ),
+                          ),
+                          const SizedBox(height: 8),
+                          const Text('Output folder'),
+                          const SizedBox(height: 6),
+                          Row(
+                            children: [
+                              Expanded(
+                                child: Text(
+                                  o.outputDir ??
+                                      'Compressed (next to each original)',
+                                  maxLines: 2,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: theme.typography.caption,
+                                ),
+                              ),
+                              const SizedBox(width: 8),
+                              Button(
+                                onPressed: widget.isProcessing
+                                    ? null
+                                    : widget.onPickOutput,
+                                child: const Text('Choose...'),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 12),
+                          const Divider(),
+                          const SizedBox(height: 8),
+                          Text(
+                            'Pro optimize',
+                            style: theme.typography.bodyStrong,
+                          ),
+                          const SizedBox(height: 8),
+                          ToggleSwitch(
+                            checked: o.enableJpegOptim,
+                            onChanged:
+                                (!widget.hasJpegoptim || widget.isProcessing)
+                                ? null
+                                : (v) => widget.onOptionsChanged(
+                                    o.copyWith(enableJpegOptim: v),
+                                  ),
+                            content: Text(
+                              widget.hasJpegoptim
+                                  ? 'Optimize JPEG (jpegoptim)'
+                                  : 'Optimize JPEG (jpegoptim not found)',
+                              maxLines: 2,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                          const SizedBox(height: 6),
+                          ToggleSwitch(
+                            checked: o.enablePngquant,
+                            onChanged:
+                                (!widget.hasPngquant || widget.isProcessing)
+                                ? null
+                                : (v) => widget.onOptionsChanged(
+                                    o.copyWith(enablePngquant: v),
+                                  ),
+                            content: Text(
+                              widget.hasPngquant
+                                  ? 'Quantize PNG palette (pngquant)'
+                                  : 'Quantize PNG (pngquant not found)',
+                              maxLines: 2,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                          const SizedBox(height: 6),
+                          Row(
+                            children: [
+                              Expanded(
+                                child: InfoLabel(
+                                  label: 'PNGquant min',
+                                  child: NumberBox(
+                                    value: o.pngquantQualityMin,
+                                    min: 0,
+                                    max: 100,
+                                    mode: SpinButtonPlacementMode.inline,
+                                    onChanged:
+                                        (!widget.hasPngquant ||
+                                            !o.enablePngquant ||
+                                            widget.isProcessing)
+                                        ? null
+                                        : (int? v) => widget.onOptionsChanged(
+                                            o.copyWith(
+                                              pngquantQualityMin:
+                                                  (v ?? o.pngquantQualityMin)
+                                                      .clamp(
+                                                        0,
+                                                        o.pngquantQualityMax,
+                                                      ),
+                                            ),
+                                          ),
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(width: 8),
+                              Expanded(
+                                child: InfoLabel(
+                                  label: 'PNGquant max',
+                                  child: NumberBox(
+                                    value: o.pngquantQualityMax,
+                                    min: 0,
+                                    max: 100,
+                                    mode: SpinButtonPlacementMode.inline,
+                                    onChanged:
+                                        (!widget.hasPngquant ||
+                                            !o.enablePngquant ||
+                                            widget.isProcessing)
+                                        ? null
+                                        : (int? v) => widget.onOptionsChanged(
+                                            o.copyWith(
+                                              pngquantQualityMax:
+                                                  (v ?? o.pngquantQualityMax)
+                                                      .clamp(
+                                                        o.pngquantQualityMin,
+                                                        100,
+                                                      ),
+                                            ),
+                                          ),
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 6),
+                          ToggleSwitch(
+                            checked: o.enableOxipng,
+                            onChanged:
+                                (!widget.hasOxipng || widget.isProcessing)
+                                ? null
+                                : (v) => widget.onOptionsChanged(
+                                    o.copyWith(enableOxipng: v),
+                                  ),
+                            content: Text(
+                              widget.hasOxipng
+                                  ? 'Lossless optimize PNG (oxipng)'
+                                  : 'Optimize PNG (oxipng not found)',
+                              maxLines: 2,
+                              overflow: TextOverflow.ellipsis,
+                            ),
                           ),
                         ],
                       ),
-                    ],
-                  ),
-                ),
-              ),
-            ),
-            const SizedBox(height: 10),
-            Wrap(
-              spacing: 8,
-              runSpacing: 8,
-              children: [
-                FilledButton(
-                  onPressed: widget.isProcessing ? null : widget.onProcess,
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Icon(
-                        widget.isProcessing
-                            ? FluentIcons.sync
-                            : FluentIcons.play,
-                      ),
-                      const SizedBox(width: 8),
-                      Text(widget.isProcessing ? 'Processing...' : 'Start'),
-                    ],
-                  ),
-                ),
-                Button(
-                  onPressed: widget.isProcessing
-                      ? widget.onCancel
-                      : widget.onClearFinished,
-                  child: Text(
-                    widget.isProcessing ? 'Cancel' : 'Clear finished',
-                  ),
-                ),
-                Button(
-                  onPressed: widget.isProcessing ? null : widget.onClearQueue,
-                  child: const Text('Clear all'),
-                ),
-              ],
-            ),
-            const SizedBox(height: 8),
-            Wrap(
-              spacing: 8,
-              runSpacing: 8,
-              crossAxisAlignment: WrapCrossAlignment.center,
-              children: [
-                Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Icon(
-                      errs > 0
-                          ? FluentIcons.status_error_full
-                          : FluentIcons.check_mark,
-                      size: 16,
-                      color: errs > 0
-                          ? Colors.red
-                          : FluentTheme.of(context).accentColor,
                     ),
-                    const SizedBox(width: 6),
-                    Text(formatCountSummary(done, total, errs)),
+                  ),
+                ),
+                const SizedBox(height: 10),
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  children: [
+                    FilledButton(
+                      onPressed: widget.isProcessing ? null : widget.onProcess,
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(
+                            widget.isProcessing
+                                ? FluentIcons.sync
+                                : FluentIcons.play,
+                          ),
+                          const SizedBox(width: 8),
+                          Text(widget.isProcessing ? 'Processing...' : 'Start'),
+                        ],
+                      ),
+                    ),
+                    Button(
+                      onPressed: widget.isProcessing
+                          ? widget.onCancel
+                          : widget.onClearFinished,
+                      child: Text(
+                        widget.isProcessing ? 'Cancel' : 'Clear finished',
+                      ),
+                    ),
+                    Button(
+                      onPressed: widget.isProcessing
+                          ? null
+                          : widget.onClearQueue,
+                      child: const Text('Clear all'),
+                    ),
                   ],
                 ),
-                Button(
-                  onPressed: () {
-                    final dir = o.outputDir;
-                    if (dir != null) {
-                      openDirectoryInExplorer(dir);
-                    } else {
-                      // Find the first job that has an output path to determine the directory.
-                      final shellState = context
-                          .findAncestorStateOfType<_AppShellState>();
-                      final firstCompletedJob = shellState?.jobs.firstWhere(
-                        (job) => job.outputPath != null,
-                        orElse: () =>
-                            Job(id: '', inputPath: ''), // Sentinel value
-                      );
-                      final outputDir = firstCompletedJob?.outputPath;
-                      if (outputDir != null) {
-                        openDirectoryInExplorer(p.dirname(outputDir));
-                      }
-                    }
-                  },
-                  child: const Text('Open output folder'),
+                const SizedBox(height: 8),
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  crossAxisAlignment: WrapCrossAlignment.center,
+                  children: [
+                    Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(
+                          errs > 0
+                              ? FluentIcons.status_error_full
+                              : FluentIcons.check_mark,
+                          size: 16,
+                          color: errs > 0
+                              ? Colors.red
+                              : FluentTheme.of(context).accentColor,
+                        ),
+                        const SizedBox(width: 6),
+                        Text(formatCountSummary(done, total, errs)),
+                      ],
+                    ),
+                    Button(
+                      onPressed: () {
+                        final dir = o.outputDir;
+                        if (dir != null) {
+                          openDirectoryInExplorer(dir);
+                        } else {
+                          final shellState = context
+                              .findAncestorStateOfType<_AppShellState>();
+                          final firstCompletedJob = shellState?.jobs.firstWhere(
+                            (job) => job.outputPath != null,
+                            orElse: () => Job(id: '', inputPath: ''),
+                          );
+                          final outputDir = firstCompletedJob?.outputPath;
+                          if (outputDir != null) {
+                            openDirectoryInExplorer(p.dirname(outputDir));
+                          }
+                        }
+                      },
+                      child: const Text('Open output folder'),
+                    ),
+                  ],
                 ),
               ],
             ),
-          ],
-        ),
+          ),
+          Positioned(
+            top: 12,
+            left: 12,
+            right: 12,
+            child: AnimatedSwitcher(
+              duration: const Duration(milliseconds: 250),
+              transitionBuilder: (child, animation) {
+                return FadeTransition(opacity: animation, child: child);
+              },
+              child: widget.bannerMessage == null
+                  ? const SizedBox.shrink()
+                  : InfoBar(
+                      key: const ValueKey('banner'),
+                      title: Text(widget.bannerMessage!),
+                      severity: widget.bannerSeverity,
+                      isLong: true,
+                      action: IconButton(
+                        icon: const Icon(FluentIcons.clear),
+                        onPressed: widget.onCloseBanner,
+                      ),
+                    ),
+            ),
+          ), //
+        ],
       ),
     );
   }
