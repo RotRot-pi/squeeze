@@ -3,7 +3,8 @@ import 'dart:ui' show Size;
 import 'package:flutter_test/flutter_test.dart';
 import 'package:image/image.dart' as img;
 import 'package:path/path.dart' as p;
-import 'package:squeeze/main.dart' as app;
+import 'package:squeeze/app/app.dart';
+import 'package:squeeze/features/home/presentation/pages/home_page.dart';
 
 Future<File> _writeTempJpg(String name) async {
   final tmp = await Directory.systemTemp.createTemp('squeeze_w1_');
@@ -22,12 +23,12 @@ void main() {
     await tester.binding.setSurfaceSize(const Size(1200, 800));
     addTearDown(() => tester.binding.setSurfaceSize(null));
 
-    await tester.pumpWidget(const app.SqueezeApp());
+    await tester.pumpWidget(const SqueezeApp());
 
     final file = await _writeTempJpg('queued.jpg');
 
-    // Access the AppShell State and enqueue one file (simulates drop or picker)
-    final stateObj = tester.state(find.byType(app.AppShell)) as dynamic;
+    // Access the HomePage State and enqueue one file (simulates drop or picker)
+    final stateObj = tester.state(find.byType(HomePage)) as dynamic;
     await stateObj.addDroppedItems([file.path]);
 
     await tester.pumpAndSettle();

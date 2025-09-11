@@ -2,8 +2,8 @@ import 'dart:io';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:image/image.dart' as img;
 import 'package:path/path.dart' as p;
-import 'package:squeeze/main.dart'
-    as app; // adjust if your package name differs
+import 'package:squeeze/core/models/options.dart' show Options;
+import 'package:squeeze/core/services/image_processing_service.dart' as app;
 
 Future<File> _writeImageJpg(
   Directory dir,
@@ -38,7 +38,7 @@ void main() {
     final tmp = await Directory.systemTemp.createTemp('squeeze_u1_');
     final inFile = await _writeImageJpg(tmp, 'big.jpg', w: 4000, h: 3000);
 
-    final opts = app.Options.defaultOptions.copyWith(
+    final opts = Options.defaultOptions.copyWith(
       maxLongEdge: 1600,
       jpegQuality: 70,
       outputDir: p.join(tmp.path, 'out'),
@@ -62,7 +62,7 @@ void main() {
     final tmp = await Directory.systemTemp.createTemp('squeeze_u2_');
     final inFile = await _writeImagePng(tmp, 'shot.png', w: 1200, h: 800);
 
-    final opts = app.Options.defaultOptions.copyWith(
+    final opts = Options.defaultOptions.copyWith(
       convertPngToJpeg: true,
       outputDir: p.join(tmp.path, 'out'),
     );
@@ -76,7 +76,7 @@ void main() {
     final tmp = await Directory.systemTemp.createTemp('squeeze_u3_');
     final inFile = await _writeImagePng(tmp, 'shot.png', w: 1200, h: 800);
 
-    final opts = app.Options.defaultOptions.copyWith(
+    final opts = Options.defaultOptions.copyWith(
       convertPngToJpeg: false,
       outputDir: p.join(tmp.path, 'out'),
     );

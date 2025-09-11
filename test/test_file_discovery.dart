@@ -1,7 +1,7 @@
 import 'dart:io';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:path/path.dart' as p;
-import 'package:squeeze/main.dart' as app; // adjust if needed
+import 'package:squeeze/core/services/file_service.dart' as app;
 
 void main() {
   test('discoverSupportedFiles finds images recursively', () async {
