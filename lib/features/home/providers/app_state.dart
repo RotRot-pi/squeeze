@@ -135,6 +135,14 @@ class AppState extends ChangeNotifier {
 
   Future<void> processAll() async {
     if (_isProcessing || _jobs.isEmpty) return;
+    for (Job job in _jobs) {
+      if (job.status == JobStatus.done || job.status == JobStatus.error) {
+        job.status = JobStatus.queued;
+        job.outputPath = null;
+        job.note = null;
+        job.error = null;
+      }
+    }
     _isProcessing = true;
     notifyListeners();
     _token = CancelToken();
