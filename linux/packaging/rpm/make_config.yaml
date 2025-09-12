@@ -1,0 +1,16 @@
+display_name: Squeeze
+icon: linux/assets/icon.png
+summary: A fast, private, cross-platform image compressor and resizer.
+description: A fast, private, cross-platform image compressor and resizer. Built with Flutter.
+group: Applications/Graphics
+vendor: Ramy
+packager: Ramy
+url: https://github.com/
+generic_name: Image Compressor
+license: Proprietary
+categories:
+  - Graphics
+  - Utility
+  - Awesome
+
+startup_notify: true
