@@ -1,11 +1,28 @@
-Here you go — a clean README, a practical User Guide, and a compact PRD to keep the project’s intent and scope crystal clear.
+<p align="center">
+  <!-- Placeholder for app icon -->
+  <img src="assets/images/squeeze_icon_256.png" alt="Squeeze App Icon" width="128">
+</p>
 
-README
-# Squeeze — desktop image compressor & resizer
+<h1 align="center">Squeeze</h1>
+
+<p align="center">
+  <strong>Desktop image compressor & resizer</strong>
+</p>
 
 Fast, private, cross‑platform image compression and resizing. Drag & drop folders or files, tweak a couple options, and ship smaller images in seconds.
 
-Highlights
+## Screenshots
+
+<!-- Placeholder for screenshots -->
+![Screenshot 1](assets/screenshots/squeeze_screenshot_1.png)
+![Screenshot 2](assets/screenshots/squeeze_screenshot_2.png)
+![Screenshot 3](assets/screenshots/squeeze_screenshot_3.png)
+![Screenshot 4](assets/screenshots/squeeze_screenshot_4.png)
+
+---
+
+## Highlights
+
 - Local and private: no uploads, no telemetry
 - Batch-first: drag folders, recursive discovery
 - Smart defaults: EXIF orientation, safe PNG→JPEG conversion (protects transparency), non-destructive outputs
@@ -13,15 +30,18 @@ Highlights
 - Quality vs speed: resampling options (Fast/Quality/Pixel art)
 - Parallel processing with cancel
 - Optional “Pro optimize” using system tools (jpegoptim, pngquant, oxipng)
+ 
+## Supported platforms
 
-Supported platforms
 - Windows, macOS, Linux (Flutter desktop)
 
-Requirements
+## Requirements
+
 - Flutter (stable channel)
 - Dart SDK bundled with Flutter
 
-Get started
+## Get started
+
 - Clone and install deps
   - flutter pub get
 - Enable desktop targets (run once)
@@ -31,7 +51,8 @@ Get started
   - flutter run -d macos
   - flutter run -d linux
 
-Optional external optimizers (detected automatically)
+## Optional external optimizers (detected automatically)
+
 - macOS (Homebrew)
   - brew install jpegoptim pngquant oxipng
 - Ubuntu/Debian
@@ -42,19 +63,23 @@ Optional external optimizers (detected automatically)
   - winget install Sharkdp.Oxipng
   - or Chocolatey equivalents: choco install jpegoptim, pngquant, oxipng
 
-Build release
+## Build release
+
 - Windows: flutter build windows
 - macOS: flutter build macos
 - Linux: flutter build linux
 
-Troubleshooting
+## Troubleshooting
+
 - Drag & drop flaky on some Linux DEs → use Select files/folder buttons
 - “Tool not found” in Pro optimize → install tool and restart the app
 - HEIC/RAW not supported (for now)
 - Color profiles (ICC) are not preserved by the current imaging backend
 
-User Guide
-Overview of the UI
+## User Guide
+
+### Overview of the UI
+
 - Left: Drop zone and live previews
   - Drag & drop images or folders (recursive)
   - Select files/folder via buttons
@@ -65,7 +90,8 @@ Overview of the UI
   - Start/Cancel and Clear actions
   - Summary and “Open output folder”
 
-Workflow
+## Workflow
+
 - Add images
   - Drop files/folders, or click Select files / Select folder
   - The queue populates with supported images (JPG/JPEG/PNG)
@@ -98,7 +124,8 @@ Workflow
   - Cancel to stop the queue early
   - Click Open output folder to view results
 
-Tips and presets
+### Tips and presets
+
 - Photos for web/docs:
   - Resize: Constrain long edge 1600–2048
   - Format: Auto (photos usually end up JPEG)
@@ -112,7 +139,8 @@ Tips and presets
   - Resize: Fill to WxH or Pad to WxH
   - Resampling: Quality (vector-like art) or Pixel art if needed
 
-What happens under the hood (short)
+### What happens under the hood (short)
+
 - Files discovered recursively; supported: .jpg/.jpeg/.png
 - Decode → apply EXIF orientation → resize (selected mode + resampling) → decide format (Auto honors transparency) → encode
 - Non-destructive output with suffix and collision-safe naming
