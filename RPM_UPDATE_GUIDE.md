@@ -42,9 +42,42 @@ That's it! Go to the "Actions" tab in your GitHub repository to monitor the prog
 
 ---
 
-## Guide 2: Manual Local RPM Builds
+## Guide 2: Manual Local Builds (All Platforms)
 
-Follow these steps if you need to create a local test build without making a public release.
+Follow these steps if you need to create a local test build for any platform without making a public release. This uses the `fastforge` tool.
+
+### Step 1: Install fastforge
+
+If you haven't already, install `fastforge` on your machine.
+
+```bash
+dart pub global activate fastforge
+```
+
+### Step 2: Build the App
+
+Run the `fastforge build` command, specifying the release name from `distribute_options.yaml` that you want to build (`linux`, `windows`, or `macos`).
+
+```bash
+# To build all Linux packages (.rpm, .deb, .AppImage)
+fastforge build linux
+
+# To build the Windows installer (.msix)
+fastforge build windows
+
+# To build the macOS package (.zip)
+fastforge build macos
+```
+
+### Step 3: Find the Installers
+
+After the build succeeds, you will find all the generated installers inside the `dist/` directory.
+
+---
+
+## Appendix: Old Manual RPM Build (Legacy)
+
+Follow these steps only if the `fastforge` tool fails and you need to build an RPM package manually.
 
 
 **Run all commands from the project's root directory** (`/home/ramy/Developement/flutter_projects/flutter_desktop/squeeze`).

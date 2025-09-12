@@ -1,16 +1,29 @@
-output: dist/
+# This file configures the 'fastforge' tool.
+# It defines the build and packaging settings for each platform.
+
+output: dist
+
 releases:
-  - name: dev
+  # === LINUX RELEASE ===
+  # This release builds all Linux package formats.
+  - name: linux
     jobs:
-      - name: release-dev-linux-deb
-        package:
-          platform: linux
-          target: deb
-          build_args:
-            enable-experiment: records
-      - name: release-dev-linux-rpm
-        package:
-          platform: linux
-          target: rpm
-          build_args:
-            enable-experiment: records
+      - platform: linux
+        # Build .rpm, .deb, and .AppImage packages
+        package_formats: [rpm, deb, appimage]
+
+  # === WINDOWS RELEASE ===
+  # This release builds the MSIX installer for Windows.
+  - name: windows
+    jobs:
+      - platform: windows
+        # Build .msix installer
+        package_formats: [msix]
+
+  # === MACOS RELEASE ===
+  # This release builds the .app and packages it into a .zip file.
+  - name: macos
+    jobs:
+      - platform: macos
+        # Build a .zip archive containing the .app bundle
+        package_formats: [zip]
