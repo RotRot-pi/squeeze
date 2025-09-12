@@ -33,7 +33,7 @@ jobs:
       - name: Install fastforge
         run: dart pub global activate fastforge
 
-      - name: Run fastforge build
+      - name: Run fastforge release
         run: fastforge release ${{ matrix.release_name }}
 
       - name: Upload build artifact

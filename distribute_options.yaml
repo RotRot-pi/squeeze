@@ -5,28 +5,31 @@ output: dist
 
 releases:
   # === LINUX RELEASE ===
-  # This release builds all Linux package formats.
   - name: linux
     jobs:
-      - name: linux-packages
-        platform: linux
-        # Build .rpm, .deb, and .AppImage packages
-        package_formats: [rpm, deb, appimage]
+      - name: release-linux
+        package:
+          platform: linux
+          target: [rpm, deb, appimage]
+          build_args:
+            release: true
 
   # === WINDOWS RELEASE ===
-  # This release builds the MSIX installer for Windows.
   - name: windows
     jobs:
-      - name: windows-msix
-        platform: windows
-        # Build .msix installer
-        package_formats: [msix]
+      - name: release-windows
+        package:
+          platform: windows
+          target: msix
+          build_args:
+            release: true
 
   # === MACOS RELEASE ===
-  # This release builds the .app and packages it into a .zip file.
   - name: macos
     jobs:
-      - name: macos-zip
-        platform: macos
-        # Build a .zip archive containing the .app bundle
-        package_formats: [zip]
+      - name: release-macos
+        package:
+          platform: macos
+          target: zip
+          build_args:
+            release: true
