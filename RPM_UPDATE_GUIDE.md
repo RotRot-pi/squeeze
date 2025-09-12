@@ -66,7 +66,7 @@ fastforge build linux
 fastforge build windows
 
 # To build the macOS package (.zip)
-fastforge build macos
+fastforge release macos
 ```
 
 ### Step 3: Find the Installers
