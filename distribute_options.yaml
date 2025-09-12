@@ -1,32 +1,36 @@
-# This file configures the 'fastforge' tool, based on official documentation.
+output: dist/
 
-output: dist
-
-# A single release can contain multiple jobs for different packages.
 releases:
-  - name: production
+  - name: linux-rpm
     jobs:
-      # Linux Jobs
       - name: linux-rpm
         package:
           platform: linux
           target: rpm
+
+  - name: linux-deb
+    jobs:
       - name: linux-deb
         package:
           platform: linux
           target: deb
+
+  - name: linux-appimage
+    jobs:
       - name: linux-appimage
         package:
           platform: linux
           target: appimage
 
-      # Windows Job
+  - name: windows-msix
+    jobs:
       - name: windows-msix
         package:
           platform: windows
           target: msix
 
-      # macOS Job
+  - name: macos-zip
+    jobs:
       - name: macos-zip
         package:
           platform: macos

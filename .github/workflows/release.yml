@@ -1,34 +1,6 @@
-name: Create Cross-Platform Release
-
-# This workflow triggers when a new tag starting with 'v' is pushed to the repository.
-on:
-  push:
-    tags:
-      - 'v*'
-
 jobs:
   build:
-    name: ${{ matrix.job_name }}
-    runs-on: ${{ matrix.os }}
-    strategy:
-      # Don't cancel all jobs if one fails
-      fail-fast: false
-      matrix:
-        include:
-          # Linux Jobs
-          - os: ubuntu-latest
-            job_name: linux-rpm
-          - os: ubuntu-latest
-            job_name: linux-deb
-          - os: ubuntu-latest
-            job_name: linux-appimage
-          # Windows Job
-          - os: windows-latest
-            job_name: windows-msix
-          # macOS Job
-          - os: macos-latest
-            job_name: macos-zip
-
+    # ...
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -36,38 +8,36 @@ jobs:
       - name: Set up Flutter
         uses: subosito/flutter-action@v2
         with:
-          channel: 'stable'
+          channel: stable
+
+      # Linux maker prereqs
+      - name: Install packaging deps (Linux)
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y rpm patchelf locate p7zip-full
+          sudo wget -O /usr/local/bin/appimagetool \
+            https://github.com/AppImage/appimagetool/releases/download/continuous/appimagetool-$(uname -m).AppImage
+          sudo chmod +x /usr/local/bin/appimagetool
+        # rpm/patchelf: rpm; appimage: locate + appimagetool; zip: 7z (p7zip)
+        # Docs: rpm/appimage/zip makers
+        # (see citations below)
+
+      # macOS maker prereqs
+      - name: Install packaging deps (macOS)
+        if: runner.os == 'macOS'
+        run: brew install p7zip
+        # zip maker needs 7z
 
       - name: Install fastforge
         run: dart pub global activate fastforge
 
       - name: Run fastforge release
-        # The --name flag specifies which job to run from distribute_options.yaml
         run: fastforge release --name ${{ matrix.job_name }}
 
       - name: Upload build artifact
         uses: actions/upload-artifact@v4
         with:
           name: ${{ matrix.job_name }}-build
-          # The output path is predictable based on the job name
-          path: dist/${{ matrix.job_name }}/*
-
-  release:
-    name: Create GitHub Release
-    needs: build
-    runs-on: ubuntu-latest
-    steps:
-      - name: Download all build artifacts
-        uses: actions/download-artifact@v4
-        with:
-          path: dist/
-      
-      - name: List downloaded files # for debugging
-        run: ls -R dist/
-
-      - name: Create GitHub Release
-        uses: softprops/action-gh-release@v2
-        with:
-          generate_release_notes: true
-          # Upload all files from all subdirectories in dist/
-          files: dist/**/*
+          # Fastforge usually outputs under dist/<version>/..., not dist/<job_name>/...
+          path: dist/**/*

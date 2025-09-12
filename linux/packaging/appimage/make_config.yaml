@@ -1,6 +1,6 @@
 display_name: Squeeze
 
-icon: linux/packaging/appimage/icon.png
+icon: icon.png
 
 keywords:
   - Application
