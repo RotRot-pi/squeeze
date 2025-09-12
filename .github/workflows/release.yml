@@ -45,7 +45,11 @@ jobs:
         if: runner.os == 'Linux'
         run: |
           sudo apt-get update
+          # Flutter Linux desktop build deps
+          sudo apt-get install -y clang cmake ninja-build pkg-config libgtk-3-dev liblzma-dev
+          # Packaging deps for deb/rpm/appimage/zip
           sudo apt-get install -y rpm patchelf fakeroot dpkg-dev desktop-file-utils p7zip-full
+          # appimagetool for AppImage maker
           sudo wget -O /usr/local/bin/appimagetool \
             https://github.com/AppImage/appimagetool/releases/download/continuous/appimagetool-$(uname -m).AppImage
           sudo chmod +x /usr/local/bin/appimagetool
