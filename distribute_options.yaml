@@ -1,35 +1,33 @@
-# This file configures the 'fastforge' tool.
-# It defines the build and packaging settings for each platform.
+# This file configures the 'fastforge' tool, based on official documentation.
 
 output: dist
 
+# A single release can contain multiple jobs for different packages.
 releases:
-  # === LINUX RELEASE ===
-  - name: linux
+  - name: production
     jobs:
-      - name: release-linux
+      # Linux Jobs
+      - name: linux-rpm
         package:
           platform: linux
-          target: [rpm, deb, appimage]
-          build_args:
-            release: true
+          target: rpm
+      - name: linux-deb
+        package:
+          platform: linux
+          target: deb
+      - name: linux-appimage
+        package:
+          platform: linux
+          target: appimage
 
-  # === WINDOWS RELEASE ===
-  - name: windows
-    jobs:
-      - name: release-windows
+      # Windows Job
+      - name: windows-msix
         package:
           platform: windows
           target: msix
-          build_args:
-            release: true
 
-  # === MACOS RELEASE ===
-  - name: macos
-    jobs:
-      - name: release-macos
+      # macOS Job
+      - name: macos-zip
         package:
           platform: macos
           target: zip
-          build_args:
-            release: true
