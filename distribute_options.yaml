@@ -8,7 +8,8 @@ releases:
   # This release builds all Linux package formats.
   - name: linux
     jobs:
-      - platform: linux
+      - name: linux-packages
+        platform: linux
         # Build .rpm, .deb, and .AppImage packages
         package_formats: [rpm, deb, appimage]
 
@@ -16,7 +17,8 @@ releases:
   # This release builds the MSIX installer for Windows.
   - name: windows
     jobs:
-      - platform: windows
+      - name: windows-msix
+        platform: windows
         # Build .msix installer
         package_formats: [msix]
 
@@ -24,6 +26,7 @@ releases:
   # This release builds the .app and packages it into a .zip file.
   - name: macos
     jobs:
-      - platform: macos
+      - name: macos-zip
+        platform: macos
         # Build a .zip archive containing the .app bundle
         package_formats: [zip]
