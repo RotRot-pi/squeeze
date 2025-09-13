@@ -1,5 +1,5 @@
 display_name: Squeeze
-icon: linux/assets/icon.png
+icon: linux/packaging/rpm/icon.png
 summary: A fast, private, cross-platform image compressor and resizer.
 description: A fast, private, cross-platform image compressor and resizer. Built with Flutter.
 group: Applications/Graphics
