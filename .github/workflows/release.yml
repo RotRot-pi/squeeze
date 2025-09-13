@@ -87,9 +87,11 @@ jobs:
         run: ls -R dist/
 
       - name: Create GitHub Release
-        if: ${{ startsWith(github.ref, 'refs/tags/') }}
         uses: softprops/action-gh-release@v2
         with:
+          tag_name: ${{ github.ref_name }}
+          name: ${{ github.ref_name }}
           generate_release_notes: true
+          overwrite: true                      # allows re-runs for same tag
           files: |
             dist/**/*.{rpm,deb,AppImage,msix,zip}
