@@ -1,5 +1,5 @@
 Name: squeeze 
-Version: 1.0.0+1 
+Version: 1.0.1+2 
 Release: 1%{?dist} 
 Summary: A fast, private, cross-platform image compressor and resizer. 
 License: Proprietary 
@@ -36,5 +36,7 @@ install -m 0644 "%{SOURCE2}" "%{buildroot}%{_datadir}/pixmaps/%{name}.png"
 %{_datadir}/pixmaps/%{name}.png
 
 %changelog
-Fri Sep 13 2024 Ramy you@example.com - 1.0.0+1-1
-Initial package
+* Fri Sep 12 2025 Ramy you@example.com - 1.0.1+2-1
+- Fixed an issue where the process doesn't work after the initial start until clearing the finished process and selecting the files again.
+* Fri Sep 13 2024 Ramy you@example.com - 1.0.0+1-1
+- Initial package

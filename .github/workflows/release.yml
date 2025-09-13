@@ -1,0 +1,94 @@
+name: Create Cross-Platform Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+# Needed so the release step can publish assets
+permissions:
+  contents: write
+
+jobs:
+  build:
+    name: ${{ matrix.job_name }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          # Linux jobs
+          - os: ubuntu-latest
+            job_name: linux-rpm
+          - os: ubuntu-latest
+            job_name: linux-deb
+          - os: ubuntu-latest
+            job_name: linux-appimage
+          # Windows job
+          - os: windows-latest
+            job_name: windows-msix
+          # macOS job
+          - os: macos-latest
+            job_name: macos-zip
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+
+      # Linux maker prerequisites
+      - name: Install packaging deps (Linux)
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          # Flutter Linux desktop build deps
+          sudo apt-get install -y clang cmake ninja-build pkg-config libgtk-3-dev liblzma-dev
+          # Packaging deps for deb/rpm/appimage/zip
+          sudo apt-get install -y rpm patchelf fakeroot dpkg-dev desktop-file-utils p7zip-full
+          # appimagetool for AppImage maker
+          sudo wget -O /usr/local/bin/appimagetool \
+            https://github.com/AppImage/appimagetool/releases/download/continuous/appimagetool-$(uname -m).AppImage
+          sudo chmod +x /usr/local/bin/appimagetool
+
+      # macOS: optional for zip maker
+      - name: Install packaging deps (macOS)
+        if: runner.os == 'macOS'
+        run: brew install p7zip
+
+      - name: Install fastforge
+        run: dart pub global activate fastforge
+
+      - name: Run fastforge release
+        run: fastforge release --name ${{ matrix.job_name }}
+
+      - name: Upload build artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.job_name }}-build
+          # Grab whatever fastforge emitted under dist/
+          path: dist/**/*
+
+  release:
+    name: Create GitHub Release
+    needs: build
+    if: ${{ always() }}     # run even if some matrix jobs failed
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download all build artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: dist/
+
+      - name: List downloaded files
+        run: ls -R dist/
+
+      - name: Create GitHub Release
+        if: ${{ hashFiles('dist/**/*.{rpm,deb,AppImage,msix,zip}') != '' }}  # only if we actually have files
+        uses: softprops/action-gh-release@v2
+        with:
+          generate_release_notes: true
+          files: dist/**/*.{rpm,deb,AppImage,msix,zip}

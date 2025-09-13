@@ -1,16 +1,37 @@
 output: dist/
+
 releases:
-  - name: dev
+  - name: linux-rpm
     jobs:
-      - name: release-dev-linux-deb
-        package:
-          platform: linux
-          target: deb
-          build_args:
-            enable-experiment: records
-      - name: release-dev-linux-rpm
+      - name: linux-rpm
         package:
           platform: linux
           target: rpm
-          build_args:
-            enable-experiment: records
+
+  - name: linux-deb
+    jobs:
+      - name: linux-deb
+        package:
+          platform: linux
+          target: deb
+
+  - name: linux-appimage
+    jobs:
+      - name: linux-appimage
+        package:
+          platform: linux
+          target: appimage
+
+  - name: windows-msix
+    jobs:
+      - name: windows-msix
+        package:
+          platform: windows
+          target: msix
+
+  - name: macos-zip
+    jobs:
+      - name: macos-zip
+        package:
+          platform: macos
+          target: zip

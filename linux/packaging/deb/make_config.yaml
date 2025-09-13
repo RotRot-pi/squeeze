@@ -1,0 +1,31 @@
+display_name: Squeeze
+package_name: squeeze
+maintainer:
+  name: Ramy
+  email: ramy.example@outlook.com
+priority: optional
+section: utils
+icon: linux/packaging/deb/icon.png
+
+postinstall_scripts:
+  - echo "Installed my awesome app"
+postuninstall_scripts:
+  - echo "Surprised Pickachu face"
+
+installed_size: 30000
+
+revision: 2
+
+keywords:
+  - Application
+
+generic_name: Image Compressor & Resizer Application
+
+categories:
+  - Graphics
+  - Utility
+
+startup_notify: true
+# You can also specify [metainfo](https://freedesktop.org/software/appstream/docs/chap-Quickstart.html) file
+# which contains metadata of the app.
+# metainfo: linux/packaging/myappid.appdata.xml
