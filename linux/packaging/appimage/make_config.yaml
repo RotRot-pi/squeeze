@@ -15,6 +15,7 @@ actions:
       - run
 
 categories:
+  - Graphics
   - Utility
 
 startup_notify: true

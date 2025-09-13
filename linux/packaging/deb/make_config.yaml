@@ -12,6 +12,8 @@ postinstall_scripts:
 postuninstall_scripts:
   - echo "Surprised Pickachu face"
 
+installed_size: 30000
+
 revision: 2
 
 keywords:
@@ -20,6 +22,7 @@ keywords:
 generic_name: Image Compressor & Resizer Application
 
 categories:
+  - Graphics
   - Utility
 
 startup_notify: true
