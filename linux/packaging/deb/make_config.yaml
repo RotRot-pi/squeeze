@@ -12,15 +12,15 @@ postinstall_scripts:
 postuninstall_scripts:
   - echo "Surprised Pickachu face"
 
+revision: 2
+
 keywords:
   - Application
 
 generic_name: Image Compressor & Resizer Application
 
 categories:
-  - Graphics
   - Utility
-  - Media
 
 startup_notify: true
 # You can also specify [metainfo](https://freedesktop.org/software/appstream/docs/chap-Quickstart.html) file

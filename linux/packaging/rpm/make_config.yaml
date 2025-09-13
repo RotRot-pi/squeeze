@@ -9,8 +9,6 @@ url: https://github.com/
 generic_name: Image Compressor
 license: Proprietary
 categories:
-  - Graphics
   - Utility
-  - Awesome
 
 startup_notify: true
