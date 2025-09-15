@@ -1,6 +1,6 @@
 <p align="center">
   <!-- Placeholder for app icon -->
-  <img src="assets/images/squeeze_icon_256.png" alt="Squeeze App Icon" width="128">
+  <img src="assets/images/squeeze_icon_512.png" alt="Squeeze App Icon" width="128">
 </p>
 
 <h1 align="center">Squeeze</h1>
