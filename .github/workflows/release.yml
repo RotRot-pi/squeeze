@@ -93,8 +93,9 @@ jobs:
           name: ${{ github.ref_name }}
           generate_release_notes: true
           files: |
-            dist/*/*.rpm
-            dist/*/*.deb
-            dist/*/*.AppImage
-            dist/*/*.msix
-            dist/*/*.zip
+            dist/**/*.rpm
+            dist/**/*.deb
+            dist/**/*.AppImage
+            dist/**/*.appimage
+            dist/**/*.msix
+            dist/**/*.zip
