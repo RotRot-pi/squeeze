@@ -92,6 +92,5 @@ jobs:
           tag_name: ${{ github.ref_name }}
           name: ${{ github.ref_name }}
           generate_release_notes: true
-          overwrite: true                      # allows re-runs for same tag
           files: |
             dist/**/*.{rpm,deb,AppImage,msix,zip}
