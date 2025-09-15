@@ -38,7 +38,7 @@ class DropZone extends StatelessWidget {
           duration: const Duration(milliseconds: 120),
           decoration: BoxDecoration(
             color: isDraggingOver
-                ? theme.accentColor.lighter.withOpacity(0.08)
+                ? theme.accentColor.lighter.withAlpha(20)
                 : theme.micaBackgroundColor,
             border: Border.all(
               color: isDraggingOver
