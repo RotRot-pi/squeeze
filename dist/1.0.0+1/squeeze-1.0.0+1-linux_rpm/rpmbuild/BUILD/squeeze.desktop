@@ -1,9 +1,0 @@
-[Desktop Entry]
-Type=Application
-Version=1.0.0+1
-Name=Squeeze
-GenericName=Image Compressor
-Icon=squeeze
-Exec=squeeze %U
-Categories=Graphics;Utility;Awesome;
-StartupNotify=true
